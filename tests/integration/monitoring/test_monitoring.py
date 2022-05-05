@@ -32,7 +32,7 @@ def test_enable_monitoring_deployment(port_generator):
             f.post(f'/{meth}', inputs=DocumentArray())
             resp = req.get(f'http://localhost:{port2}/')
             assert (
-                f'process_request_seconds_created{{endpoint="/{meth}",executor="DummyExecutor"}}'
+                f'process_request_seconds_created{{endpoint="/{meth}",executor="DummyExecutor",pods_name="executor1/rep-0"}}'
                 in str(resp.content)
             )
 
@@ -59,6 +59,12 @@ def test_enable_monitoring_gateway(protocol, port_generator):
 def test_monitoring_head(port_generator):
     port1 = port_generator()
     port2 = port_generator()
+
+    f = (
+        Flow(monitoring=True)
+        .add(uses=DummyExecutor, port_monitoring=port1)
+        .add(uses=DummyExecutor, port_monitoring=port2, shards=2)
+    )
 
     with Flow(monitoring=True).add(uses=DummyExecutor, port_monitoring=port1).add(
         uses=DummyExecutor, port_monitoring=port2, shards=2
@@ -93,12 +99,12 @@ def test_document_processed_total(port_generator):
 
         resp = req.get(f'http://localhost:{port1}/')
         assert (
-            f'jina_document_processed_total{{endpoint="/foo",executor="DummyExecutor"}} 4.0'  # check that we count 4 documents on foo
+            f'jina_document_processed_total{{endpoint="/foo",executor="DummyExecutor",pods_name="executor0/rep-0"}} 4.0'  # check that we count 4 documents on foo
             in str(resp.content)
         )
 
         assert not (
-            f'jina_document_processed_total{{endpoint="/bar",executor="DummyExecutor"}}'  # check that we does not start counting documents on bar as it has not been called yet
+            f'jina_document_processed_total{{endpoint="/bar",executor="DummyExecutor",pods_name="executor0/rep-0"}}'  # check that we does not start counting documents on bar as it has not been called yet
             in str(resp.content)
         )
 
@@ -107,12 +113,12 @@ def test_document_processed_total(port_generator):
         )  # process 5 documents on bar
 
         assert not (
-            f'jina_document_processed_total{{endpoint="/bar",executor="DummyExecutor"}} 5.0'  # check that we count 5 documents on foo
+            f'jina_document_processed_total{{endpoint="/bar",executor="DummyExecutor",pods_name="executor0/rep-0"}} 5.0'  # check that we count 5 documents on foo
             in str(resp.content)
         )
 
         assert (
-            f'jina_document_processed_total{{endpoint="/foo",executor="DummyExecutor"}} 4.0'  # check that we nothing change on bar count
+            f'jina_document_processed_total{{endpoint="/foo",executor="DummyExecutor",pods_name="executor0/rep-0"}} 4.0'  # check that we nothing change on bar count
             in str(resp.content)
         )
 
